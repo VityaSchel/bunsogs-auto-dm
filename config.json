@@ -1,10 +1,4 @@
 {
   "rooms": {
-    "my_chat_room2": {
-      "message": "Hello! Solve this captcha to be able to send messages in our room!",
-      "verified_message": "Thanks! Now you can write",
-      "captcha": true,
-      "captcha_difficult": false
-    }
   }
 }
