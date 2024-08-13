@@ -143,7 +143,7 @@ let blindedSessionId: string
 async function addModerator(rooms: { id: number, token: string }[], pk: string) {
   for (const room of rooms) {
     const session = sessions.get(room.token)
-    if (!session) return
+    if (!session) continue
     blindedSessionId = session.blindSessionId(pk)
     self.postMessage({
       method: 'setRoomModerator',
