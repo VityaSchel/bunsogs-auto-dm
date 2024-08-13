@@ -214,7 +214,7 @@ async function onBeforePost(evData: any) {
         ...(captchaImage && captchaId !== undefined && {
           attachments: [{
             id: captchaId,
-            url: `/room/${room.token}/file/${captchaId}`,
+            url: `${server.url}/room/${room.token}/file/${captchaId}`,
             contentType: 'image/png',
             size: captchaImage.byteLength,
             fileName: `captcha-${nanoid()}-${Date.now()}.png`
@@ -253,7 +253,7 @@ async function onBeforePost(evData: any) {
 async function onUserJoin({ user, room, server }: {
   user: { id: number, session_id: string }
   room: { id: number, token: string }
-  server: { pk: string }
+  server: { pk: string, url: string }
 }) {
   const roomConfig = config.rooms[room.token]
   const session = sessions.get(room.token)
@@ -287,7 +287,7 @@ async function onUserJoin({ user, room, server }: {
       ...(captchaImage && captchaId !== undefined && {
         attachments: [{
           id: captchaId,
-          url: `/room/${room.token}/file/${captchaId}`,
+          url: `${server.url}/room/${room.token}/file/${captchaId}`,
           contentType: 'image/png',
           size: captchaImage.byteLength,
           fileName: `captcha-${nanoid() }-${Date.now()}.png`
