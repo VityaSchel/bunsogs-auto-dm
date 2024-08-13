@@ -109,6 +109,7 @@ self.addEventListener('message', async event => {
     switch (event.data.type) {
       case 'onRecentMessagesRequest': {
         const user = event.data.payload.user
+        if (!user) return
         const roomToken = event.data.payload.room.token
         const verifiedSet = verified.get(roomToken)
         if (!verifiedSet || verifiedSet.has(user.id)) {
@@ -156,6 +157,7 @@ async function addModerator(rooms: { id: number, token: string }[], pk: string) 
 
 async function onBeforePost(evData: any) {
   const user = evData.payload.message.author
+  if (!user) return
   if (user.admin || user.moderator || user.roomPermissions.admin || user.roomPermissions.moderator) {
     postMessage({ ok: true, action: 'send', ref: evData.ref })
     return
