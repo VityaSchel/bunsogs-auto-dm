@@ -9,10 +9,12 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@session.js/client": "0.0.40",
+    "@session.js/client": "0.0.42",
     "@session.js/file-keyval-storage": "^1.0.2",
     "@session.js/keypair": "^1.0.2",
     "@session.js/mnemonic": "^1.0.4",
+    "nanoid": "^5.0.7",
+    "vanilla-captcha": "^2.0.16",
     "zod": "^3.23.8"
   }
 }

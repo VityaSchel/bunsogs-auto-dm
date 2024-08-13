@@ -5,6 +5,8 @@ import { Session } from '@session.js/client'
 import { generateSeedHex } from '@session.js/keypair'
 import { encode, decode } from '@session.js/mnemonic'
 import { FileKeyvalStorage } from '@session.js/file-keyval-storage'
+import generate from 'vanilla-captcha'
+import { nanoid } from 'nanoid'
 
 const configSerialized = await fs.readFile(path.join(__dirname, './config.json'), 'utf-8')
 const config = z.object({
@@ -13,6 +15,7 @@ const config = z.object({
     z.object({
       message: z.string().min(1).max(1024).optional(),
       captcha: z.boolean().optional(),
+      captcha_difficult: z.boolean().optional(),
     })
   )
 }).parse(JSON.parse(configSerialized))
@@ -54,8 +57,6 @@ for (const roomToken in config.rooms) {
   })
   session.setMnemonic(encode(sessionSeedHex))
   sessions.set(roomToken, session)
-
-  // TODO: get blinded id and make user moderator
 
   const roomDb = dbParsed.db?.[roomToken]
   db.set(roomToken, new Map(Object.entries(roomDb ?? {})))
@@ -113,8 +114,12 @@ self.addEventListener('message', async event => {
         }
         const record = room.get(user.id)
         if (!record || (record.captchaAnswer && record.captchaSentAt && Date.now() - record.captchaSentAt > 1000 * 60 * 60 * 24 * 30)) {
-          onUserJoin({ user, room: event.data.payload.room, serverPk: event.data.payload.server.pk })
+          onUserJoin({ user, room: event.data.payload.room, server: event.data.payload.server })
         }
+        break
+      }
+      case 'onLoad': {
+        addModerator(event.data.payload.rooms, event.data.payload.server.pk)
         break
       }
       default:
@@ -123,32 +128,65 @@ self.addEventListener('message', async event => {
   }
 })
 
-async function onUserJoin({ user, room, serverPk }: {
-  user: { session_id: string }
-  room: { id: number, token: string }
-  serverPk: string
-}) {
-  const roomConfig = config.rooms[room.token]
-  const session = sessions.get(room.token)
-  if (!roomConfig || !session) return
-  if(roomConfig.message) {
-    let captchaId: number // TODO: generate captcha
-
-    const { data, signature, blindedSessionId } = session.encodeSogsMessage({
-      serverPk: serverPk,
-      text: user.session_id + ', ' + roomConfig.message,
-      // ...(captcha && { attachment: { id: captchaId } })
-    })
-
-    // TODO: remove this and move in startup block
-    postMessage({
+let blindedSessionId: string
+async function addModerator(rooms: { id: number, token: string }[], pk: string) {
+  for (const room of rooms) {
+    const session = sessions.get(room.token)
+    if (!session) return console.error('Session not found')
+    blindedSessionId = session.blindSessionId(pk)
+    self.postMessage({
       method: 'setRoomModerator',
       room: room.token,
       user: blindedSessionId,
       visible: true
     })
+  }
+}
 
-    await new Promise<void>(resolve => setTimeout(resolve, 10))
+async function onUserJoin({ user, room, server }: {
+  user: { session_id: string }
+  room: { id: number, token: string }
+  server: { pk: string, url: string }
+}) {
+  const roomConfig = config.rooms[room.token]
+  const session = sessions.get(room.token)
+  if (!roomConfig || !session) return
+  if(roomConfig.message) {
+    const { answer, captcha } = await generate(roomConfig.captcha_difficult ? 5 : 4, {
+      width: 345,
+      height: 96,
+      backgroundColor: '#2D2D2D',
+      fontColor: '#31F196',
+      lineColor: '#31F196',
+      font: roomConfig.captcha_difficult ? 'Hallandale Square JL' : 'Arial',
+      fontSize: roomConfig.captcha_difficult ? 38 : 53,
+      lineWidth: 4,
+      lineAmount: 7,
+      fontWeight: 900
+    })
+
+    const uploadRequestRef = nanoid()
+    postMessage({
+      method: 'uploadFile',
+      user: blindedSessionId,
+      room: room.id,
+      file: captcha,
+      ref: uploadRequestRef
+    })
+    const captchaId = await new Promise<number>(resolve => {
+      self.addEventListener('message', event => {
+        if (event.data.response_ref === uploadRequestRef) {
+          resolve(event.data.id)
+        }
+      })
+    })
+
+    const { data, signature } = session.encodeSogsMessage({
+      serverPk: server.pk,
+      text: user.session_id + ', ' + roomConfig.message,
+      ...(captcha && { attachments: [{ id: captchaId, url: `${server.url}/room/${room.token}/file/${captchaId}` }] })
+    })
+    console.log(captchaId, `${server.url}/room/${room.token}/file/${captchaId}`)
 
     self.postMessage({
       method: 'sendMessage',
@@ -160,7 +198,6 @@ async function onUserJoin({ user, room, serverPk }: {
     })
 
     // TODO: figure out how DMs work and why signature does not work
-
     // self.postMessage({
     //   method: 'sendDm',
     //   from: blindedSessionId,
