@@ -123,7 +123,7 @@ self.addEventListener('message', async event => {
         if (!roomDb) {
           return
         }
-        const record = roomDb.get(user.id)
+        const record = roomDb.get(user.session_id)
         if (!record || (record.captchaAnswer && record.captchaSentAt && Date.now() - record.captchaSentAt > 1000 * 60 * 60 * 24 * 30)) {
           onUserJoin({ user, room: event.data.payload.room, server: event.data.payload.server })
         }
