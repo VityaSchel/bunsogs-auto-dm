@@ -18,7 +18,7 @@ Data is stored in db.json and session_*.json. DO NOT EDIT THESE MANUALLY.
 
 bunsogs-auto-dm allows you to configure message for each room individually via config.json file's `rooms` property where key is room's token. Any changes to config.json require restarting bunsogs.
 
-In each item write "message" — which is a text message that is sent to each user upon joining SOGS. Available variables: {display_name}. Max length is 1024 characters.
+In each item write "message" and optionally "verified_message" — which is a text message that is sent to each user upon joining SOGS and after captcha verification. They're only visible to new participant. Max length is 1024 characters.
 
 Optionally set "captcha" to true to send user captcha along with greeting message. To control difficulty you can set "captcha_difficult" to true.
 
@@ -30,18 +30,17 @@ Assuming you have rooms `my_chat_room` and `my_public_channel_room` and want to 
 {
   "rooms": {
     "my_chat_room": {
-      "message": "Hello, {display_name}! Solve this captcha to be able to send messages in our room!",
+      "message": "Hello! Solve this captcha to be able to send messages in our room!",
+      "verified_message": "Thanks! Now you can write",
       "captcha": true,
       "captcha_difficult": false
     },
     "my_public_channel_room": {
-      "message": "Hello, {display_name}! Welcome to my channel!"
+      "message": "Hello! Welcome to my channel!"
     },
   }
 }
 ```
-
-This plugin only modifies verified user permissions, so **SET DEFAULT PERMISSION TO write=false IN YOUR ROOMS WITH CAPTCHAS**, otherwise new participants will be able to send messages before answering captcha.
 
 ## Caveats
 
